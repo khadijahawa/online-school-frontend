@@ -15,7 +15,7 @@ export interface Course {
   title: string;
   courseNo: string;
   teacherId: string;
-  totalSessions: number;
+  totalLessons: number; // Changed from totalSessions to totalLessons
   status: "active" | "completed" | "cancelled";
   createdAt: Date;
 }
@@ -34,19 +34,28 @@ export interface CourseStudent {
   hasPaid: boolean;
 }
 
-export interface Session {
+export interface Lesson {
   id: string;
   courseId: string;
-  sessionNumber: number;
+  lessonNumber: number;
   date?: string;
   topic: string;
   notes: string;
-  attendance: string[];
+  attendance: string[]; // Student IDs who attended
+  isCompleted: boolean; // Whether the lesson is completed or not
   status: "completed" | "cancelled" | "planned";
 }
 
 export interface TeacherPayment {
   teacherId: string;
   courseId: string;
+  isPaid: boolean;
+}
+
+export interface StudentPayment {
+  studentId: string;
+  courseId: string;
+  amount: number;
+  date: Date;
   isPaid: boolean;
 }

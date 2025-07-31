@@ -4,7 +4,7 @@ import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   mockCourses,
-  mockSessions,
+  mockLessons,
   mockStudents,
   mockCourseStudents,
 } from "@/lib/mockData";
@@ -12,14 +12,14 @@ import {
 const teacherMenuItems = [
   { icon: "📊", label: "Dashboard", href: "/teacher/dashboard" },
   { icon: "📚", label: "Kurslarım", href: "/teacher/courses" },
-  { icon: "📝", label: "Oturumlar", href: "/teacher/sessions" },
+  { icon: "📝", label: "Dersler", href: "/teacher/sessions" },
   { icon: "✅", label: "Tamamlanan", href: "/teacher/completed" },
 ];
 
 export default function TeacherSessions() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
-  const [newSession, setNewSession] = useState({
+  const [newLesson, setNewLesson] = useState({
     courseId: "",
     topic: "",
     date: "",
@@ -32,31 +32,31 @@ export default function TeacherSessions() {
   const teacherCourses = mockCourses.filter(
     (course) => course.teacherId === teacherId
   );
-  const teacherSessions = mockSessions.filter((s) =>
-    teacherCourses.some((c) => c.id === s.courseId)
+  const teacherLessons = mockLessons.filter((l) =>
+    teacherCourses.some((c) => c.id === l.courseId)
   );
 
-  const handleAddSession = (e: React.FormEvent) => {
+  const handleAddLesson = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Yeni oturum:", newSession);
+    console.log("Yeni ders:", newLesson);
     setShowAddForm(false);
-    setNewSession({
+    setNewLesson({
       courseId: "",
       topic: "",
       date: "",
       notes: "",
       attendance: [],
     });
-    alert("Oturum başarıyla eklendi!");
+    alert("Ders başarıyla eklendi!");
   };
 
-  const markSessionComplete = (sessionId: string) => {
-    alert("Oturum tamamlandı olarak işaretlendi!");
+  const markLessonComplete = (lessonId: string) => {
+    alert("Ders tamamlandı olarak işaretlendi!");
   };
 
-  const cancelSession = (sessionId: string) => {
-    if (confirm("Bu oturumu iptal etmek istediğinizden emin misiniz?")) {
-      alert("Oturum iptal edildi!");
+  const cancelLesson = (lessonId: string) => {
+    if (confirm("Bu dersi iptal etmek istediğinizden emin misiniz?")) {
+      alert("Ders iptal edildi!");
     }
   };
 
@@ -81,37 +81,37 @@ export default function TeacherSessions() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              Oturum Yönetimi
+              Ders Yönetimi
             </h1>
             <p className="text-gray-600">
-              Kurs oturumlarınızı planlayın ve yönetin
+              Kurs derslerinizi planlayın ve yönetin
             </p>
           </div>
           <button
             onClick={() => setShowAddForm(true)}
             className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-lg"
           >
-            ➕ Yeni Oturum Ekle
+            ➕ Yeni Ders Ekle
           </button>
         </div>
 
-        {/* Oturum Ekleme Formu */}
+        {/* Ders Ekleme Formu */}
         {showAddForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
               <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Yeni Oturum Ekle
+                Yeni Ders Ekle
               </h2>
-              <form onSubmit={handleAddSession} className="space-y-4">
+              <form onSubmit={handleAddLesson} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Kurs
                   </label>
                   <select
-                    value={newSession.courseId}
+                    value={newLesson.courseId}
                     onChange={(e) => {
-                      setNewSession({
-                        ...newSession,
+                      setNewLesson({
+                        ...newLesson,
                         courseId: e.target.value,
                       });
                       setSelectedCourse(e.target.value);
@@ -136,9 +136,9 @@ export default function TeacherSessions() {
                   </label>
                   <input
                     type="text"
-                    value={newSession.topic}
+                    value={newLesson.topic}
                     onChange={(e) =>
-                      setNewSession({ ...newSession, topic: e.target.value })
+                      setNewLesson({ ...newLesson, topic: e.target.value })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                     placeholder="Örn: Doğal Sayılar"
@@ -152,9 +152,9 @@ export default function TeacherSessions() {
                   </label>
                   <input
                     type="date"
-                    value={newSession.date}
+                    value={newLesson.date}
                     onChange={(e) =>
-                      setNewSession({ ...newSession, date: e.target.value })
+                      setNewLesson({ ...newLesson, date: e.target.value })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                     required
@@ -166,13 +166,13 @@ export default function TeacherSessions() {
                     Notlar
                   </label>
                   <textarea
-                    value={newSession.notes}
+                    value={newLesson.notes}
                     onChange={(e) =>
-                      setNewSession({ ...newSession, notes: e.target.value })
+                      setNewLesson({ ...newLesson, notes: e.target.value })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                     rows={3}
-                    placeholder="Oturum hakkında notlarınız..."
+                    placeholder="Ders hakkında notlarınız..."
                   />
                 </div>
 
@@ -186,22 +186,22 @@ export default function TeacherSessions() {
                         <label key={student?.id} className="flex items-center">
                           <input
                             type="checkbox"
-                            checked={newSession.attendance.includes(
+                            checked={newLesson.attendance.includes(
                               student?.id || ""
                             )}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setNewSession({
-                                  ...newSession,
+                                setNewLesson({
+                                  ...newLesson,
                                   attendance: [
-                                    ...newSession.attendance,
+                                    ...newLesson.attendance,
                                     student?.id || "",
                                   ],
                                 });
                               } else {
-                                setNewSession({
-                                  ...newSession,
-                                  attendance: newSession.attendance.filter(
+                                setNewLesson({
+                                  ...newLesson,
+                                  attendance: newLesson.attendance.filter(
                                     (id) => id !== student?.id
                                   ),
                                 });
@@ -223,7 +223,7 @@ export default function TeacherSessions() {
                     type="submit"
                     className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
                   >
-                    Oturum Ekle
+                    Ders Ekle
                   </button>
                   <button
                     type="button"
@@ -238,11 +238,11 @@ export default function TeacherSessions() {
           </div>
         )}
 
-        {/* Oturum Listesi */}
+        {/* Ders Listesi */}
         <div className="space-y-6">
-          {teacherSessions.map((session) => {
-            const course = mockCourses.find((c) => c.id === session.courseId);
-            const attendingStudents = session.attendance
+          {teacherLessons.map((lesson) => {
+            const course = mockCourses.find((c) => c.id === lesson.courseId);
+            const attendingStudents = lesson.attendance
               .map((studentId) => mockStudents.find((s) => s.id === studentId))
               .filter(Boolean);
 
@@ -270,21 +270,21 @@ export default function TeacherSessions() {
               },
             };
 
-            const config = statusConfig[session.status];
+            const config = statusConfig[lesson.status];
 
             return (
               <div
-                key={session.id}
+                key={lesson.id}
                 className={`rounded-xl border-2 p-6 ${config.bg} ${config.border}`}
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-800 mb-1">
-                      {course?.title} - Oturum {session.sessionNumber}
+                      {course?.title} - Ders {lesson.lessonNumber}
                     </h3>
-                    <p className="text-gray-600 mb-2">{session.topic}</p>
-                    {session.date && (
-                      <p className="text-sm text-gray-500">📅 {session.date}</p>
+                    <p className="text-gray-600 mb-2">{lesson.topic}</p>
+                    {lesson.date && (
+                      <p className="text-sm text-gray-500">📅 {lesson.date}</p>
                     )}
                   </div>
                   <span
@@ -321,21 +321,21 @@ export default function TeacherSessions() {
                   <div>
                     <h4 className="font-semibold text-gray-700 mb-2">Notlar</h4>
                     <p className="text-sm text-gray-600 bg-white p-3 rounded-lg">
-                      {session.notes || "Not eklenmemiş"}
+                      {lesson.notes || "Not eklenmemiş"}
                     </p>
                   </div>
                 </div>
 
-                {session.status === "planned" && (
+                {lesson.status === "planned" && (
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => markSessionComplete(session.id)}
+                      onClick={() => markLessonComplete(lesson.id)}
                       className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                     >
                       ✅ Tamamlandı
                     </button>
                     <button
-                      onClick={() => cancelSession(session.id)}
+                      onClick={() => cancelLesson(lesson.id)}
                       className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                     >
                       ❌ İptal Et
@@ -349,16 +349,16 @@ export default function TeacherSessions() {
             );
           })}
 
-          {teacherSessions.length === 0 && (
+          {teacherLessons.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg mb-4">
-                Henüz oturum bulunmuyor
+                Henüz ders bulunmuyor
               </p>
               <button
                 onClick={() => setShowAddForm(true)}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
               >
-                İlk Oturumunuzu Ekleyin
+                İlk Dersinizi Ekleyin
               </button>
             </div>
           )}

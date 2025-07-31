@@ -3,26 +3,33 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import authService from "@/lib/auth";
 
 export default function TeacherLogin() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("teacher@example.com");
+  const [password, setPassword] = useState("123456");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
-    // Mock authentication - teacher@school.com / teacher123
-    if (email === "teacher@school.com" && password === "teacher123") {
-      localStorage.setItem("user", JSON.stringify({ role: "teacher", email }));
-      router.push("/teacher/dashboard");
-    } else {
-      alert("Hatalı email veya şifre!");
+    try {
+      const response = await authService.login({ email, password });
+
+      if (response.success && response.data.user.role === "teacher") {
+        router.push("/teacher/dashboard");
+      } else {
+        setError("Bu panel sadece öğretmenler içindir!");
+      }
+    } catch (error: any) {
+      setError(error.message || "Giriş yapılırken bir hata oluştu");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -41,6 +48,12 @@ export default function TeacherLogin() {
           <p className="text-gray-600">Öğretmen olarak giriş yapın</p>
         </div>
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label
@@ -55,7 +68,7 @@ export default function TeacherLogin() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="teacher@school.com"
+              placeholder="teacher@example.com"
               required
             />
           </div>
@@ -89,8 +102,8 @@ export default function TeacherLogin() {
 
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-600 mb-2">Demo Giriş Bilgileri:</p>
-          <p className="text-xs text-gray-500">E-posta: teacher@school.com</p>
-          <p className="text-xs text-gray-500">Şifre: teacher123</p>
+          <p className="text-xs text-gray-500">E-posta: teacher@example.com</p>
+          <p className="text-xs text-gray-500">Şifre: 123456</p>
         </div>
       </div>
     </div>

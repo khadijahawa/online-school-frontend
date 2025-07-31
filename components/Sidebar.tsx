@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import authService from "@/lib/auth";
 
 interface MenuItem {
   icon: string;
@@ -19,8 +20,7 @@ export default function Sidebar({ title, menuItems, userEmail }: SidebarProps) {
   const router = useRouter();
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    router.push("/");
+    authService.logout();
   };
 
   return (

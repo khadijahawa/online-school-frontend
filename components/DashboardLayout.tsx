@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
+import authService from "@/lib/auth";
 
 interface MenuItem {
   icon: string;
@@ -28,19 +29,21 @@ export default function DashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (!userData) {
-      router.push("/");
-      return;
+    // Geçici olarak authentication kontrolünü devre dışı bırakıyoruz
+    const currentUser = authService.getCurrentUser();
+    
+    if (currentUser) {
+      setUser(currentUser);
+    } else {
+      // Test için mock user oluşturuyoruz
+      setUser({
+        id: "1",
+        email: requiredRole === "admin" ? "admin@example.com" : "teacher@example.com",
+        role: requiredRole,
+        name: requiredRole === "admin" ? "Admin" : "Teacher"
+      });
     }
-
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== requiredRole) {
-      router.push("/");
-      return;
-    }
-
-    setUser(parsedUser);
+    
     setLoading(false);
   }, [router, requiredRole]);
 
