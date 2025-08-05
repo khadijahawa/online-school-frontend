@@ -435,26 +435,28 @@ export default function AdminCourses() {
                 <div className="space-y-3 mb-4">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">👨‍🏫 Öğretmen:</span>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-gray-800">
                       {getTeacherName(course.teacherId)}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">👨‍🎓 Öğrenci:</span>
-                    <span className="font-semibold">{stats.studentCount}</span>
+                    <span className="font-semibold text-gray-800">
+                      {stats.studentCount}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">📝 Ders:</span>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-gray-800">
                       {stats.completedLessons}/{course.totalLessons}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">💰 Ödeme:</span>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-gray-800">
                       {stats.paidStudents}/{stats.studentCount}
                     </span>
                   </div>
@@ -463,7 +465,7 @@ export default function AdminCourses() {
                 <div className="mb-4">
                   <div className="flex justify-between text-sm text-gray-600 mb-1">
                     <span>İlerleme</span>
-                    <span>
+                    <span className="font-bold text-gray-800">
                       %
                       {Math.round(
                         (stats.completedLessons / course.totalLessons) * 100

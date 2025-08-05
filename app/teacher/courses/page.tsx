@@ -114,19 +114,21 @@ export default function TeacherCourses() {
                 <div className="space-y-3 mb-4">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">👨‍🎓 Öğrenci:</span>
-                    <span className="font-semibold">{stats.studentCount}</span>
+                    <span className="font-semibold text-gray-600">
+                      {stats.studentCount}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">📝 Ders:</span>
-                    <span className="font-semibold">
+                    <span className="font-semibold  text-gray-600">
                       {stats.completedLessons}/{course.totalLessons}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">💰 Ödeme:</span>
-                    <span className="font-semibold">
+                    <span className="font-semibold  text-gray-600">
                       {stats.paidStudents}/{stats.studentCount}
                     </span>
                   </div>
@@ -135,7 +137,7 @@ export default function TeacherCourses() {
                 <div className="mb-4">
                   <div className="flex justify-between text-sm text-gray-600 mb-1">
                     <span>İlerleme</span>
-                    <span>
+                    <span className="text-gray-800 font-bold">
                       %
                       {Math.round(
                         (stats.completedLessons / course.totalLessons) * 100
