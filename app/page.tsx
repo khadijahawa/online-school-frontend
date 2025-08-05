@@ -27,14 +27,6 @@ export default function Home() {
             👩‍🏫 Öğretmen Paneli
             <p className="text-sm opacity-90 mt-1">Öğretmenler için</p>
           </Link>
-
-          <Link
-            href="/api-test"
-            className="block w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-6 rounded-xl text-center font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            🧪 API Test
-            <p className="text-sm opacity-90 mt-1">API testleri için</p>
-          </Link>
         </div>
 
         <div className="mt-8 text-center">
