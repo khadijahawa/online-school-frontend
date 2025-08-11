@@ -1,5 +1,11 @@
 import axiosClient from "../axiosClient";
-import { Course, MappedCourse, MappedSession } from "../types";
+import {
+  Course,
+  MappedCourse,
+  MappedSession,
+  CreateCourseRequest,
+  CreateCourseResponse,
+} from "../types";
 
 export interface CourseResponse {
   id: number;
@@ -106,6 +112,25 @@ class CourseService {
     } catch (error) {
       console.error("Kurs getirilirken hata:", error);
       throw new Error("Kurs yüklenirken bir hata oluştu");
+    }
+  }
+
+  // Yeni kurs ekle
+  async createCourse(
+    courseData: CreateCourseRequest
+  ): Promise<CreateCourseResponse> {
+    try {
+      const response = await axiosClient.post<CreateCourseResponse>(
+        "/admin/courses",
+        courseData
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error("Kurs eklenirken hata:", error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw new Error("Kurs eklenirken bir hata oluştu");
     }
   }
 

@@ -71,6 +71,64 @@ export interface StudentPayment {
   isPaid: boolean;
 }
 
+// API Response Types
+export interface CreateStudentRequest {
+  name: string;
+  phone: string;
+  email: string;
+  is_new: boolean;
+}
+
+export interface CreateStudentResponse {
+  message: string;
+  student: {
+    isNew: boolean;
+    id: number;
+    name: string;
+    phone: string;
+    email: string;
+    updatedAt: string;
+    createdAt: string;
+  };
+}
+
+export interface CreateTeacherRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface CreateTeacherResponse {
+  message: string;
+  teacher?: {
+    id: number;
+    userId: number;
+    updatedAt: string;
+    createdAt: string;
+  };
+}
+
+export interface CreateCourseRequest {
+  title: string;
+  course_no: string;
+  teacher_id: number;
+  total_sessions: number;
+}
+
+export interface CreateCourseResponse {
+  message: string;
+  course: {
+    status: string;
+    id: number;
+    title: string;
+    course_no: string;
+    total_sessions: number;
+    teacher_id: number;
+    updatedAt: string;
+    createdAt: string;
+  };
+}
+
 // Frontend'de kullanılan mapped types
 export interface MappedCourse {
   id: string;

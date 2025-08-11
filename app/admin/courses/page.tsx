@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import courseService from "@/lib/services/courseService";
 import studentService from "@/lib/services/studentService";
-import { MappedCourse, MappedSession } from "@/lib/types";
+import teacherService from "@/lib/services/teacherService";
+import { MappedCourse, MappedSession, CreateCourseRequest } from "@/lib/types";
+import { TeacherResponse } from "@/lib/services/teacherService";
 
 const adminMenuItems = [
   { icon: "📊", label: "Dashboard", href: "/admin/dashboard" },
@@ -20,14 +22,15 @@ export default function AdminCourses() {
   const [filterStatus, setFilterStatus] = useState<
     "all" | "active" | "completed"
   >("all");
-  const [newCourse, setNewCourse] = useState({
+  const [newCourse, setNewCourse] = useState<CreateCourseRequest>({
     title: "",
-    courseNo: "",
-    teacherId: "",
-    totalLessons: 1,
+    course_no: "",
+    teacher_id: 0,
+    total_sessions: 1,
   });
   const [courses, setCourses] = useState<MappedCourse[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -35,12 +38,15 @@ export default function AdminCourses() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [fetchedCourses, fetchedStudents] = await Promise.all([
-          courseService.getAllCourses(),
-          studentService.getAllStudents(),
-        ]);
+        const [fetchedCourses, fetchedStudents, fetchedTeachers] =
+          await Promise.all([
+            courseService.getAllCourses(),
+            studentService.getAllStudents(),
+            teacherService.getAllTeachers(),
+          ]);
         setCourses(fetchedCourses);
         setStudents(fetchedStudents);
+        setTeachers(fetchedTeachers);
       } catch (err: any) {
         setError(err.message || "Veriler yüklenirken bir hata oluştu");
       } finally {
@@ -51,13 +57,26 @@ export default function AdminCourses() {
     fetchData();
   }, []);
 
-  const handleAddCourse = (e: React.FormEvent) => {
+  const handleAddCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API'ye kurs ekleme endpoint'i gerekli
-    console.log("Yeni kurs:", newCourse);
-    setShowAddForm(false);
-    setNewCourse({ title: "", courseNo: "", teacherId: "", totalLessons: 1 });
-    alert("Kurs ekleme özelliği henüz API'ye bağlanmadı!");
+    try {
+      const response = await courseService.createCourse(newCourse);
+      setShowAddForm(false);
+      setNewCourse({
+        title: "",
+        course_no: "",
+        teacher_id: 0,
+        total_sessions: 1,
+      });
+
+      // Listeyi yenile
+      const updatedCourses = await courseService.getAllCourses();
+      setCourses(updatedCourses);
+
+      alert(response.message || "Kurs başarıyla eklendi!");
+    } catch (error: any) {
+      alert(`Kurs eklenirken hata: ${error.message}`);
+    }
   };
 
   const getTeacherName = (teacherId: string) => {
@@ -82,7 +101,7 @@ export default function AdminCourses() {
   const getCourseStudents = (courseId: string) => {
     // TODO: Student enrollment API endpoint'i gerekli
     // Şimdilik tüm öğrencileri döndür (test için)
-    return students.map(student => ({
+    return students.map((student) => ({
       student,
       hasPaid: Math.random() > 0.5, // Random payment status for demo
     }));
@@ -219,9 +238,9 @@ export default function AdminCourses() {
                   </label>
                   <input
                     type="text"
-                    value={newCourse.courseNo}
+                    value={newCourse.course_no}
                     onChange={(e) =>
-                      setNewCourse({ ...newCourse, courseNo: e.target.value })
+                      setNewCourse({ ...newCourse, course_no: e.target.value })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Örn: CR004"
@@ -234,16 +253,22 @@ export default function AdminCourses() {
                     Öğretmen
                   </label>
                   <select
-                    value={newCourse.teacherId}
+                    value={newCourse.teacher_id || ""}
                     onChange={(e) =>
-                      setNewCourse({ ...newCourse, teacherId: e.target.value })
+                      setNewCourse({
+                        ...newCourse,
+                        teacher_id: parseInt(e.target.value),
+                      })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     required
                   >
                     <option value="">Öğretmen seçin</option>
-                    {/* TODO: Teacher API endpoint'i gerekli */}
-                    <option value="1">Öğretmen bilgileri yükleniyor...</option>
+                    {teachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.User.name} ({teacher.User.email})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -254,11 +279,11 @@ export default function AdminCourses() {
                   <input
                     type="number"
                     min="1"
-                    value={newCourse.totalLessons}
+                    value={newCourse.total_sessions}
                     onChange={(e) =>
                       setNewCourse({
                         ...newCourse,
-                        totalLessons: parseInt(e.target.value),
+                        total_sessions: parseInt(e.target.value),
                       })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -460,7 +485,9 @@ export default function AdminCourses() {
                     <span className="text-gray-600">👨‍🎓 Öğrenci:</span>
                     <span className="font-semibold text-gray-800">
                       {/* TODO: Student count API */}
-                      {students.length > 0 ? Math.floor(Math.random() * 10) + 1 : 0}
+                      {students.length > 0
+                        ? Math.floor(Math.random() * 10) + 1
+                        : 0}
                     </span>
                   </div>
 

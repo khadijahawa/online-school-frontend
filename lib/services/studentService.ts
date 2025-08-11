@@ -1,5 +1,9 @@
 import axiosClient from "../axiosClient";
-import { MappedCourse } from "../types";
+import {
+  MappedCourse,
+  CreateStudentRequest,
+  CreateStudentResponse,
+} from "../types";
 
 export interface StudentResponse {
   id: number;
@@ -37,7 +41,9 @@ class StudentService {
   // Belirli bir öğrenciyi getir
   async getStudentById(id: string): Promise<StudentResponse> {
     try {
-      const response = await axiosClient.get<StudentResponse>(`/students/${id}`);
+      const response = await axiosClient.get<StudentResponse>(
+        `/students/${id}`
+      );
       return response.data;
     } catch (error) {
       console.error("Öğrenci getirilirken hata:", error);
@@ -48,19 +54,23 @@ class StudentService {
   // Öğrencinin kurslarını getir
   async getStudentCourses(studentId: string): Promise<MappedCourse[]> {
     try {
-      const response = await axiosClient.get<StudentCourseResponse[]>(`/students/${studentId}/courses`);
-      
-      return response.data.map((course): MappedCourse => ({
-        id: course.id.toString(),
-        title: course.title,
-        courseNo: course.course_no,
-        teacherId: course.teacher_id.toString(),
-        totalLessons: course.total_sessions,
-        status: course.status,
-        createdAt: new Date(course.createdAt),
-        teacherName: "Öğretmen bilgisi yükleniyor...", // API'de teacher bilgisi yok
-        teacherEmail: "email@example.com", // API'de teacher bilgisi yok
-      }));
+      const response = await axiosClient.get<StudentCourseResponse[]>(
+        `/students/${studentId}/courses`
+      );
+
+      return response.data.map(
+        (course): MappedCourse => ({
+          id: course.id.toString(),
+          title: course.title,
+          courseNo: course.course_no,
+          teacherId: course.teacher_id.toString(),
+          totalLessons: course.total_sessions,
+          status: course.status,
+          createdAt: new Date(course.createdAt),
+          teacherName: "Öğretmen bilgisi yükleniyor...", // API'de teacher bilgisi yok
+          teacherEmail: "email@example.com", // API'de teacher bilgisi yok
+        })
+      );
     } catch (error) {
       console.error("Öğrenci kursları getirilirken hata:", error);
       throw new Error("Öğrenci kursları yüklenirken bir hata oluştu");
@@ -68,28 +78,38 @@ class StudentService {
   }
 
   // Yeni öğrenci ekle
-  async createStudent(studentData: {
-    name: string;
-    phone: string;
-    email: string;
-  }): Promise<StudentResponse> {
+  async createStudent(
+    studentData: CreateStudentRequest
+  ): Promise<CreateStudentResponse> {
     try {
-      const response = await axiosClient.post<StudentResponse>("/students", studentData);
+      const response = await axiosClient.post<CreateStudentResponse>(
+        "/students",
+        studentData
+      );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Öğrenci eklenirken hata:", error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
       throw new Error("Öğrenci eklenirken bir hata oluştu");
     }
   }
 
   // Öğrenci bilgilerini güncelle
-  async updateStudent(studentId: string, studentData: Partial<{
-    name: string;
-    phone: string;
-    email: string;
-  }>): Promise<StudentResponse> {
+  async updateStudent(
+    studentId: string,
+    studentData: Partial<{
+      name: string;
+      phone: string;
+      email: string;
+    }>
+  ): Promise<StudentResponse> {
     try {
-      const response = await axiosClient.patch<StudentResponse>(`/students/${studentId}`, studentData);
+      const response = await axiosClient.patch<StudentResponse>(
+        `/students/${studentId}`,
+        studentData
+      );
       return response.data;
     } catch (error) {
       console.error("Öğrenci güncellenirken hata:", error);
@@ -117,9 +137,11 @@ class StudentService {
   }> {
     try {
       const courses = await this.getStudentCourses(studentId);
-      const activeCourses = courses.filter(c => c.status === "active").length;
-      const completedCourses = courses.filter(c => c.status === "completed").length;
-      
+      const activeCourses = courses.filter((c) => c.status === "active").length;
+      const completedCourses = courses.filter(
+        (c) => c.status === "completed"
+      ).length;
+
       // TODO: Lesson count için ayrı endpoint gerekli
       return {
         totalCourses: courses.length,

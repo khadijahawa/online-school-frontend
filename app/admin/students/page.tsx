@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import studentService from "@/lib/services/studentService";
 import { StudentResponse } from "@/lib/services/studentService";
+import { CreateStudentRequest } from "@/lib/types";
 
 const adminMenuItems = [
   { icon: "📊", label: "Dashboard", href: "/admin/dashboard" },
@@ -16,11 +17,14 @@ const adminMenuItems = [
 export default function AdminStudents() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<"all" | "new" | "existing">("all");
-  const [newStudent, setNewStudent] = useState({
+  const [filterStatus, setFilterStatus] = useState<"all" | "new" | "existing">(
+    "all"
+  );
+  const [newStudent, setNewStudent] = useState<CreateStudentRequest>({
     name: "",
     phone: "",
     email: "",
+    is_new: false,
   });
   const [students, setStudents] = useState<StudentResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,15 +49,15 @@ export default function AdminStudents() {
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await studentService.createStudent(newStudent);
+      const response = await studentService.createStudent(newStudent);
       setShowAddForm(false);
-      setNewStudent({ name: "", phone: "", email: "" });
-      
+      setNewStudent({ name: "", phone: "", email: "", is_new: false });
+
       // Listeyi yenile
       const updatedStudents = await studentService.getAllStudents();
       setStudents(updatedStudents);
-      
-      alert("Öğrenci başarıyla eklendi!");
+
+      alert(response.message || "Öğrenci başarıyla eklendi!");
     } catch (error: any) {
       alert(`Öğrenci eklenirken hata: ${error.message}`);
     }
@@ -63,11 +67,11 @@ export default function AdminStudents() {
     if (confirm("Bu öğrenciyi silmek istediğinizden emin misiniz?")) {
       try {
         await studentService.deleteStudent(studentId);
-        
+
         // Listeyi yenile
         const updatedStudents = await studentService.getAllStudents();
         setStudents(updatedStudents);
-        
+
         alert("Öğrenci başarıyla silindi!");
       } catch (error: any) {
         alert(`Öğrenci silinirken hata: ${error.message}`);
@@ -163,7 +167,7 @@ export default function AdminStudents() {
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Yeni Öğrenciler ({students.filter(s => s.isNew).length})
+              Yeni Öğrenciler ({students.filter((s) => s.isNew).length})
             </button>
             <button
               onClick={() => setFilterStatus("existing")}
@@ -173,7 +177,7 @@ export default function AdminStudents() {
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Mevcut Öğrenciler ({students.filter(s => !s.isNew).length})
+              Mevcut Öğrenciler ({students.filter((s) => !s.isNew).length})
             </button>
           </div>
         </div>
@@ -234,6 +238,23 @@ export default function AdminStudents() {
                   />
                 </div>
 
+                <div>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newStudent.is_new}
+                      onChange={(e) =>
+                        setNewStudent({
+                          ...newStudent,
+                          is_new: e.target.checked,
+                        })
+                      }
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Yeni öğrenci</span>
+                  </label>
+                </div>
+
                 <div className="flex space-x-3 pt-4">
                   <button
                     type="submit"
@@ -271,7 +292,9 @@ export default function AdminStudents() {
               </div>
 
               {(() => {
-                const student = students.find((s) => s.id.toString() === selectedStudent);
+                const student = students.find(
+                  (s) => s.id.toString() === selectedStudent
+                );
 
                 if (!student) return null;
 
@@ -290,7 +313,9 @@ export default function AdminStudents() {
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {student.isNew ? "🆕 Yeni Öğrenci" : "👨‍🎓 Mevcut Öğrenci"}
+                        {student.isNew
+                          ? "🆕 Yeni Öğrenci"
+                          : "👨‍🎓 Mevcut Öğrenci"}
                       </span>
                     </div>
 
@@ -298,7 +323,9 @@ export default function AdminStudents() {
                       <h4 className="text-lg font-semibold text-gray-800 mb-3">
                         Kurslar
                       </h4>
-                      <p className="text-gray-500">Kurs bilgileri yükleniyor...</p>
+                      <p className="text-gray-500">
+                        Kurs bilgileri yükleniyor...
+                      </p>
                     </div>
 
                     <div>
@@ -308,22 +335,19 @@ export default function AdminStudents() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="text-center p-3 bg-blue-50 rounded-lg">
                           <p className="text-2xl font-bold text-blue-600">
-                            {/* TODO: Course count */}
-                            0
+                            {/* TODO: Course count */}0
                           </p>
                           <p className="text-sm text-gray-600">Kurs</p>
                         </div>
                         <div className="text-center p-3 bg-green-50 rounded-lg">
                           <p className="text-2xl font-bold text-green-600">
-                            {/* TODO: Active courses count */}
-                            0
+                            {/* TODO: Active courses count */}0
                           </p>
                           <p className="text-sm text-gray-600">Aktif Kurs</p>
                         </div>
                         <div className="text-center p-3 bg-purple-50 rounded-lg">
                           <p className="text-2xl font-bold text-purple-600">
-                            {/* TODO: Completed courses count */}
-                            0
+                            {/* TODO: Completed courses count */}0
                           </p>
                           <p className="text-sm text-gray-600">
                             Tamamlanan Kurs
@@ -331,8 +355,7 @@ export default function AdminStudents() {
                         </div>
                         <div className="text-center p-3 bg-orange-50 rounded-lg">
                           <p className="text-2xl font-bold text-orange-600">
-                            {/* TODO: Total lessons count */}
-                            0
+                            {/* TODO: Total lessons count */}0
                           </p>
                           <p className="text-sm text-gray-600">Toplam Ders</p>
                         </div>
@@ -375,24 +398,21 @@ export default function AdminStudents() {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">📚 Kurs:</span>
                   <span className="font-semibold text-gray-800">
-                    {/* TODO: Course count */}
-                    0
+                    {/* TODO: Course count */}0
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">📝 Ders:</span>
                   <span className="font-semibold text-gray-800">
-                    {/* TODO: Lesson count */}
-                    0
+                    {/* TODO: Lesson count */}0
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">💰 Ödeme:</span>
                   <span className="font-semibold text-gray-800">
-                    {/* TODO: Payment status */}
-                    ❌ Ödemedi
+                    {/* TODO: Payment status */}❌ Ödemedi
                   </span>
                 </div>
               </div>
