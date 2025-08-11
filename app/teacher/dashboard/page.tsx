@@ -1,14 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-// import AuthGuard from "@/components/AuthGuard";
-import {
-  mockCourses,
-  mockLessons,
-  mockUsers,
-  mockStudents,
-  mockCourseStudents,
-} from "@/lib/mockData";
+import courseService from "@/lib/services/courseService";
+import { MappedCourse, MappedSession } from "@/lib/types";
 
 const teacherMenuItems = [
   { icon: "📊", label: "Dashboard", href: "/teacher/dashboard" },
@@ -18,24 +13,75 @@ const teacherMenuItems = [
 ];
 
 export default function TeacherDashboard() {
-  // Mock: Öğretmen ID'si 2 olarak sabit
-  const teacherId = "2";
-  const teacherCourses = mockCourses.filter(
-    (course) => course.teacherId === teacherId
-  );
-  const activeCourses = teacherCourses.filter((c) => c.status === "active");
-  const completedCourses = teacherCourses.filter(
-    (c) => c.status === "completed"
-  );
-  const totalLessons = mockLessons.filter((l) =>
-    teacherCourses.some((c) => c.id === l.courseId)
-  ).length;
-  const completedLessons = mockLessons.filter(
-    (l) => teacherCourses.some((c) => c.id === l.courseId) && l.isCompleted
-  ).length;
+  const [courses, setCourses] = useState<MappedCourse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Mock: Öğretmen ID'si 2 olarak sabit (API'de teacher_id: 1 olarak görünüyor)
+  const teacherId = "1";
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const fetchedCourses = await courseService.getCoursesByTeacher(
+          teacherId
+        );
+        setCourses(fetchedCourses);
+      } catch (err: any) {
+        setError(err.message || "Veriler yüklenirken bir hata oluştu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [teacherId]);
+
+  const activeCourses = courses.filter((c) => c.status === "active");
+  const completedCourses = courses.filter((c) => c.status === "completed");
+
+  // TODO: Total lessons ve completed lessons için session API'leri gerekli
+  const totalLessons = 0;
+  const completedLessons = 0;
+
+  if (loading) {
+    return (
+      <DashboardLayout
+        title="👩‍🏫 Öğretmen Paneli"
+        menuItems={teacherMenuItems}
+        requiredRole="teacher"
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            <span className="ml-3 text-lg text-gray-600">
+              Veriler yükleniyor...
+            </span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout
+        title="👩‍🏫 Öğretmen Paneli"
+        menuItems={teacherMenuItems}
+        requiredRole="teacher"
+      >
+        <div className="p-6">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <strong className="font-bold">Hata:</strong>
+            <span className="block sm:inline"> {error}</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
-    // <AuthGuard requiredRole="teacher" redirectTo="/teacher/login">
     <DashboardLayout
       title="👩‍🏫 Öğretmen Paneli"
       menuItems={teacherMenuItems}
@@ -102,15 +148,8 @@ export default function TeacherDashboard() {
             </h2>
             <div className="space-y-3">
               {activeCourses.map((course) => {
-                const courseLessons = mockLessons.filter(
-                  (l) => l.courseId === course.id
-                );
-                const completedLessonsCount = courseLessons.filter(
-                  (l) => l.isCompleted
-                ).length;
-                const progress = Math.round(
-                  (completedLessonsCount / course.totalLessons) * 100
-                );
+                // TODO: Course progress için session API'leri gerekli
+                const progress = 0;
 
                 return (
                   <div key={course.id} className="p-4 bg-gray-50 rounded-lg">
@@ -126,7 +165,8 @@ export default function TeacherDashboard() {
                       <div className="flex justify-between text-sm text-gray-600 mb-1">
                         <span>İlerleme</span>
                         <span>
-                          {completedLessonsCount}/{course.totalLessons} ders
+                          {/* TODO: Completed lessons count */}
+                          0/{course.totalLessons} ders
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
@@ -157,66 +197,13 @@ export default function TeacherDashboard() {
               Son Dersler
             </h2>
             <div className="space-y-3">
-              {mockLessons
-                .filter((l) => teacherCourses.some((c) => c.id === l.courseId))
-                .slice(0, 5)
-                .map((lesson) => {
-                  const course = mockCourses.find(
-                    (c) => c.id === lesson.courseId
-                  );
-                  const statusConfig = {
-                    completed: {
-                      bg: "bg-green-100",
-                      text: "text-green-800",
-                      icon: "✅",
-                    },
-                    cancelled: {
-                      bg: "bg-red-100",
-                      text: "text-red-800",
-                      icon: "❌",
-                    },
-                    planned: {
-                      bg: "bg-blue-100",
-                      text: "text-blue-800",
-                      icon: "📅",
-                    },
-                  };
-                  const config = statusConfig[lesson.status];
-
-                  return (
-                    <div
-                      key={lesson.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-semibold text-gray-800">
-                          {course?.title}
-                        </p>
-                        <p className="text-sm text-gray-600">{lesson.topic}</p>
-                        {lesson.date && (
-                          <p className="text-xs text-gray-500">{lesson.date}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
-                        >
-                          <span className="mr-1">{config.icon}</span>
-                          {lesson.status === "completed"
-                            ? "Tamamlandı"
-                            : lesson.status === "cancelled"
-                            ? "İptal Edildi"
-                            : "Planlandı"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+              <p className="text-gray-500 text-center py-8">
+                Ders bilgileri henüz API'ye bağlanmadı
+              </p>
             </div>
           </div>
         </div>
       </div>
     </DashboardLayout>
-    // </AuthGuard>
   );
 }

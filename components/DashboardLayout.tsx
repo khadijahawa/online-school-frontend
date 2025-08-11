@@ -29,21 +29,16 @@ export default function DashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
-    // Geçici olarak authentication kontrolünü devre dışı bırakıyoruz
     const currentUser = authService.getCurrentUser();
-    
-    if (currentUser) {
+
+    if (currentUser && currentUser.role === requiredRole) {
       setUser(currentUser);
     } else {
-      // Test için mock user oluşturuyoruz
-      setUser({
-        id: "1",
-        email: requiredRole === "admin" ? "admin@example.com" : "teacher@example.com",
-        role: requiredRole,
-        name: requiredRole === "admin" ? "Admin" : "Teacher"
-      });
+      // Kullanıcı yok veya yanlış rol - login sayfasına yönlendir
+      router.push(requiredRole === "admin" ? "/admin/login" : "/teacher/login");
+      return;
     }
-    
+
     setLoading(false);
   }, [router, requiredRole]);
 

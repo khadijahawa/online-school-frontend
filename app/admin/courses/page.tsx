@@ -1,14 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import {
-  mockCourses,
-  mockUsers,
-  mockLessons,
-  mockCourseStudents,
-  mockStudents,
-} from "@/lib/mockData";
+import courseService from "@/lib/services/courseService";
+import studentService from "@/lib/services/studentService";
+import { MappedCourse, MappedSession } from "@/lib/types";
 
 const adminMenuItems = [
   { icon: "📊", label: "Dashboard", href: "/admin/dashboard" },
@@ -30,57 +26,108 @@ export default function AdminCourses() {
     teacherId: "",
     totalLessons: 1,
   });
+  const [courses, setCourses] = useState<MappedCourse[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const teachers = mockUsers.filter((u) => u.role === "teacher");
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [fetchedCourses, fetchedStudents] = await Promise.all([
+          courseService.getAllCourses(),
+          studentService.getAllStudents(),
+        ]);
+        setCourses(fetchedCourses);
+        setStudents(fetchedStudents);
+      } catch (err: any) {
+        setError(err.message || "Veriler yüklenirken bir hata oluştu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleAddCourse = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock: Kurs ekleme işlemi
+    // TODO: API'ye kurs ekleme endpoint'i gerekli
     console.log("Yeni kurs:", newCourse);
     setShowAddForm(false);
     setNewCourse({ title: "", courseNo: "", teacherId: "", totalLessons: 1 });
-    alert("Kurs başarıyla eklendi!");
+    alert("Kurs ekleme özelliği henüz API'ye bağlanmadı!");
   };
 
   const getTeacherName = (teacherId: string) => {
-    const teacher = mockUsers.find((u) => u.id === teacherId);
-    return teacher?.name || "Bilinmeyen";
+    const course = courses.find((c) => c.id === teacherId);
+    return course?.teacherName || "Bilinmeyen";
   };
 
-  const getCourseStats = (courseId: string) => {
-    const lessons = mockLessons.filter((l) => l.courseId === courseId);
-    const students = mockCourseStudents.filter(
-      (cs) => cs.courseId === courseId
-    );
-    const completedLessons = lessons.filter((l) => l.isCompleted).length;
-
-    return {
-      totalLessons: lessons.length,
-      completedLessons,
-      studentCount: students.length,
-      paidStudents: students.filter((s) => s.hasPaid).length,
-    };
+  const getCourseStats = async (courseId: string) => {
+    try {
+      const stats = await courseService.getCourseStats(courseId);
+      return stats;
+    } catch (error) {
+      return {
+        totalLessons: 0,
+        completedLessons: 0,
+        studentCount: 0,
+        paidStudents: 0,
+      };
+    }
   };
 
   const getCourseStudents = (courseId: string) => {
-    const enrollments = mockCourseStudents.filter(
-      (cs) => cs.courseId === courseId
-    );
-    return enrollments
-      .map((enrollment) => {
-        const student = mockStudents.find((s) => s.id === enrollment.studentId);
-        return {
-          student,
-          hasPaid: enrollment.hasPaid,
-        };
-      })
-      .filter(Boolean);
+    // TODO: Student enrollment API endpoint'i gerekli
+    // Şimdilik tüm öğrencileri döndür (test için)
+    return students.map(student => ({
+      student,
+      hasPaid: Math.random() > 0.5, // Random payment status for demo
+    }));
   };
 
-  const filteredCourses = mockCourses.filter((course) => {
+  const filteredCourses = courses.filter((course) => {
     if (filterStatus === "all") return true;
     return course.status === filterStatus;
   });
+
+  if (loading) {
+    return (
+      <DashboardLayout
+        title="👨‍💼 Admin Paneli"
+        menuItems={adminMenuItems}
+        requiredRole="admin"
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-lg text-gray-600">
+              Veriler yükleniyor...
+            </span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout
+        title="👨‍💼 Admin Paneli"
+        menuItems={adminMenuItems}
+        requiredRole="admin"
+      >
+        <div className="p-6">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <strong className="font-bold">Hata:</strong>
+            <span className="block sm:inline"> {error}</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -195,11 +242,8 @@ export default function AdminCourses() {
                     required
                   >
                     <option value="">Öğretmen seçin</option>
-                    {teachers.map((teacher) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.name}
-                      </option>
-                    ))}
+                    {/* TODO: Teacher API endpoint'i gerekli */}
+                    <option value="1">Öğretmen bilgileri yükleniyor...</option>
                   </select>
                 </div>
 
@@ -259,9 +303,8 @@ export default function AdminCourses() {
               </div>
 
               {(() => {
-                const course = mockCourses.find((c) => c.id === selectedCourse);
+                const course = courses.find((c) => c.id === selectedCourse);
                 const courseStudents = getCourseStudents(selectedCourse);
-                const stats = getCourseStats(selectedCourse);
 
                 if (!course) return null;
 
@@ -273,7 +316,7 @@ export default function AdminCourses() {
                       </h3>
                       <p className="text-gray-600">{course.courseNo}</p>
                       <p className="text-gray-600">
-                        Öğretmen: {getTeacherName(course.teacherId)}
+                        Öğretmen: {course.teacherName}
                       </p>
                     </div>
 
@@ -281,73 +324,47 @@ export default function AdminCourses() {
                       <h4 className="text-lg font-semibold text-gray-800 mb-3">
                         Öğrenciler
                       </h4>
-                      <div className="space-y-2">
-                        {courseStudents.map((cs, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
-                          >
-                            <div>
-                              <p className="font-medium text-gray-800">
-                                {cs.student?.name}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {cs.student?.email}
-                              </p>
-                            </div>
-                            <span
-                              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                cs.hasPaid
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
+                      {courseStudents.length > 0 ? (
+                        <div className="space-y-2">
+                          {courseStudents.map((cs, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
                             >
-                              {cs.hasPaid ? "💰 Ödedi" : "❌ Ödemedi"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                              <div>
+                                <p className="font-medium text-gray-800">
+                                  {cs.student?.name}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {cs.student?.email}
+                                </p>
+                              </div>
+                              <span
+                                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  cs.hasPaid
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {cs.hasPaid ? "💰 Ödedi" : "❌ Ödemedi"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">
+                          Öğrenci bilgileri henüz API'ye bağlanmadı
+                        </p>
+                      )}
                     </div>
 
                     <div>
                       <h4 className="text-lg font-semibold text-gray-800 mb-3">
                         Dersler
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {mockLessons
-                          .filter((l) => l.courseId === selectedCourse)
-                          .map((lesson) => (
-                            <div
-                              key={lesson.id}
-                              className="p-3 bg-white border border-gray-200 rounded-lg"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <h5 className="font-medium text-gray-800">
-                                  Ders {lesson.lessonNumber}: {lesson.topic}
-                                </h5>
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    lesson.isCompleted
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-yellow-100 text-yellow-800"
-                                  }`}
-                                >
-                                  {lesson.isCompleted
-                                    ? "✅ Tamamlandı"
-                                    : "⏳ Bekliyor"}
-                                </span>
-                              </div>
-                              {lesson.date && (
-                                <p className="text-sm text-gray-600 mb-1">
-                                  📅 {lesson.date}
-                                </p>
-                              )}
-                              <p className="text-sm text-gray-600">
-                                Katılım: {lesson.attendance.length} öğrenci
-                              </p>
-                            </div>
-                          ))}
-                      </div>
+                      <p className="text-gray-500">
+                        Ders bilgileri kurs detaylarında mevcut
+                      </p>
                     </div>
 
                     <div>
@@ -357,19 +374,19 @@ export default function AdminCourses() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="text-center p-3 bg-blue-50 rounded-lg">
                           <p className="text-2xl font-bold text-blue-600">
-                            {stats.studentCount}
+                            {courseStudents.length}
                           </p>
                           <p className="text-sm text-gray-600">Öğrenci</p>
                         </div>
                         <div className="text-center p-3 bg-green-50 rounded-lg">
                           <p className="text-2xl font-bold text-green-600">
-                            {stats.paidStudents}
+                            {courseStudents.filter((s) => s.hasPaid).length}
                           </p>
                           <p className="text-sm text-gray-600">Ödeme Yapan</p>
                         </div>
                         <div className="text-center p-3 bg-purple-50 rounded-lg">
                           <p className="text-2xl font-bold text-purple-600">
-                            {stats.completedLessons}
+                            {/* TODO: Completed sessions count */}0
                           </p>
                           <p className="text-sm text-gray-600">
                             Tamamlanan Ders
@@ -393,7 +410,6 @@ export default function AdminCourses() {
         {/* Kurs Listesi */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredCourses.map((course) => {
-            const stats = getCourseStats(course.id);
             const statusConfig = {
               active: {
                 bg: "bg-green-100",
@@ -436,28 +452,31 @@ export default function AdminCourses() {
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">👨‍🏫 Öğretmen:</span>
                     <span className="font-semibold text-gray-800">
-                      {getTeacherName(course.teacherId)}
+                      {course.teacherName}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">👨‍🎓 Öğrenci:</span>
                     <span className="font-semibold text-gray-800">
-                      {stats.studentCount}
+                      {/* TODO: Student count API */}
+                      {students.length > 0 ? Math.floor(Math.random() * 10) + 1 : 0}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">📝 Ders:</span>
                     <span className="font-semibold text-gray-800">
-                      {stats.completedLessons}/{course.totalLessons}
+                      {/* TODO: Completed lessons count */}
+                      0/{course.totalLessons}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">💰 Ödeme:</span>
                     <span className="font-semibold text-gray-800">
-                      {stats.paidStudents}/{stats.studentCount}
+                      {/* TODO: Payment count API */}
+                      0/0
                     </span>
                   </div>
                 </div>
@@ -465,22 +484,12 @@ export default function AdminCourses() {
                 <div className="mb-4">
                   <div className="flex justify-between text-sm text-gray-600 mb-1">
                     <span>İlerleme</span>
-                    <span className="font-bold text-gray-800">
-                      %
-                      {Math.round(
-                        (stats.completedLessons / course.totalLessons) * 100
-                      )}
-                    </span>
+                    <span className="font-bold text-gray-800">%0</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(
-                          (stats.completedLessons / course.totalLessons) * 100,
-                          100
-                        )}%`,
-                      }}
+                      style={{ width: "0%" }}
                     ></div>
                   </div>
                 </div>

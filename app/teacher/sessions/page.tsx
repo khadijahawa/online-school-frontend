@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import {
-  mockCourses,
-  mockLessons,
-  mockStudents,
-  mockCourseStudents,
-} from "@/lib/mockData";
+import courseService from "@/lib/services/courseService";
+import sessionService from "@/lib/services/sessionService";
+import { MappedCourse, MappedSession } from "@/lib/types";
 
 const teacherMenuItems = [
   { icon: "📊", label: "Dashboard", href: "/teacher/dashboard" },
@@ -26,50 +23,131 @@ export default function TeacherSessions() {
     notes: "",
     attendance: [] as string[],
   });
+  const [courses, setCourses] = useState<MappedCourse[]>([]);
+  const [sessions, setSessions] = useState<MappedSession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Mock: Öğretmen ID'si 2 olarak sabit
-  const teacherId = "2";
-  const teacherCourses = mockCourses.filter(
-    (course) => course.teacherId === teacherId
-  );
-  const teacherLessons = mockLessons.filter((l) =>
-    teacherCourses.some((c) => c.id === l.courseId)
-  );
+  // Mock: Öğretmen ID'si 1 olarak sabit (API'de teacher_id: 1 olarak görünüyor)
+  const teacherId = "1";
 
-  const handleAddLesson = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const fetchedCourses = await courseService.getCoursesByTeacher(
+          teacherId
+        );
+        setCourses(fetchedCourses);
+
+        // Tüm kursların session'larını topla
+        const allSessions: MappedSession[] = [];
+        for (const course of fetchedCourses) {
+          try {
+            const courseSessions = await courseService.getSessionsForCourse(
+              course.id
+            );
+            allSessions.push(...courseSessions);
+          } catch (err) {
+            console.warn(
+              `Course ${course.id} sessions could not be loaded:`,
+              err
+            );
+          }
+        }
+        setSessions(allSessions);
+      } catch (err: any) {
+        setError(err.message || "Veriler yüklenirken bir hata oluştu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [teacherId]);
+
+  const handleAddLesson = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Yeni ders:", newLesson);
-    setShowAddForm(false);
-    setNewLesson({
-      courseId: "",
-      topic: "",
-      date: "",
-      notes: "",
-      attendance: [],
-    });
-    alert("Ders başarıyla eklendi!");
+    try {
+      // TODO: API'ye session ekleme endpoint'i gerekli
+      console.log("Yeni ders:", newLesson);
+      setShowAddForm(false);
+      setNewLesson({
+        courseId: "",
+        topic: "",
+        date: "",
+        notes: "",
+        attendance: [],
+      });
+      alert("Ders ekleme özelliği henüz API'ye bağlanmadı!");
+    } catch (error) {
+      console.error("Ders eklenirken hata:", error);
+      alert("Ders eklenirken bir hata oluştu!");
+    }
   };
 
-  const markLessonComplete = (lessonId: string) => {
-    alert("Ders tamamlandı olarak işaretlendi!");
+  const markLessonComplete = async (lessonId: string) => {
+    try {
+      await sessionService.markSessionComplete(lessonId);
+      // Session listesini yenile
+      window.location.reload();
+    } catch (error) {
+      alert("Ders tamamlanırken bir hata oluştu!");
+    }
   };
 
-  const cancelLesson = (lessonId: string) => {
+  const cancelLesson = async (lessonId: string) => {
     if (confirm("Bu dersi iptal etmek istediğinizden emin misiniz?")) {
-      alert("Ders iptal edildi!");
+      try {
+        await sessionService.cancelSession(lessonId);
+        // Session listesini yenile
+        window.location.reload();
+      } catch (error) {
+        alert("Ders iptal edilirken bir hata oluştu!");
+      }
     }
   };
 
   const getCourseStudents = (courseId: string) => {
-    const enrollments = mockCourseStudents.filter(
-      (cs) => cs.courseId === courseId
-    );
-    return enrollments
-      .map((enrollment) =>
-        mockStudents.find((s) => s.id === enrollment.studentId)
-      )
-      .filter(Boolean);
+    // TODO: Student enrollment API endpoint'i gerekli
+    return [];
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout
+        title="👩‍🏫 Öğretmen Paneli"
+        menuItems={teacherMenuItems}
+        requiredRole="teacher"
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            <span className="ml-3 text-lg text-gray-600">
+              Veriler yükleniyor...
+            </span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout
+        title="👩‍🏫 Öğretmen Paneli"
+        menuItems={teacherMenuItems}
+        requiredRole="teacher"
+      >
+        <div className="p-6">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <strong className="font-bold">Hata:</strong>
+            <span className="block sm:inline"> {error}</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -120,7 +198,7 @@ export default function TeacherSessions() {
                     required
                   >
                     <option value="">Kurs seçin</option>
-                    {teacherCourses
+                    {courses
                       .filter((c) => c.status === "active")
                       .map((course) => (
                         <option key={course.id} value={course.id}>
@@ -240,12 +318,8 @@ export default function TeacherSessions() {
 
         {/* Ders Listesi */}
         <div className="space-y-6">
-          {teacherLessons.map((lesson) => {
-            const course = mockCourses.find((c) => c.id === lesson.courseId);
-            const attendingStudents = lesson.attendance
-              .map((studentId) => mockStudents.find((s) => s.id === studentId))
-              .filter(Boolean);
-
+          {sessions.map((session) => {
+            const course = courses.find((c) => c.id === session.courseId);
             const statusConfig = {
               completed: {
                 bg: "bg-green-50",
@@ -270,21 +344,21 @@ export default function TeacherSessions() {
               },
             };
 
-            const config = statusConfig[lesson.status];
+            const config = statusConfig[session.status];
 
             return (
               <div
-                key={lesson.id}
+                key={session.id}
                 className={`rounded-xl border-2 p-6 ${config.bg} ${config.border}`}
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-800 mb-1">
-                      {course?.title} - Ders {lesson.lessonNumber}
+                      {course?.title} - Ders {session.lessonNumber}
                     </h3>
-                    <p className="text-gray-600 mb-2">{lesson.topic}</p>
-                    {lesson.date && (
-                      <p className="text-sm text-gray-500">📅 {lesson.date}</p>
+                    <p className="text-gray-600 mb-2">{session.topic}</p>
+                    {session.date && (
+                      <p className="text-sm text-gray-500">📅 {session.date}</p>
                     )}
                   </div>
                   <span
@@ -298,44 +372,31 @@ export default function TeacherSessions() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <h4 className="font-semibold text-gray-700 mb-2">
-                      Katılımcılar ({attendingStudents.length})
+                      Katılımcılar
                     </h4>
-                    <div className="space-y-1">
-                      {attendingStudents.map((student) => (
-                        <div
-                          key={student?.id}
-                          className="flex items-center text-sm"
-                        >
-                          <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                          {student?.name}
-                        </div>
-                      ))}
-                      {attendingStudents.length === 0 && (
-                        <p className="text-gray-500 text-sm">
-                          Henüz katılımcı yok
-                        </p>
-                      )}
-                    </div>
+                    <p className="text-gray-500 text-sm">
+                      Katılımcı bilgileri henüz API'ye bağlanmadı
+                    </p>
                   </div>
 
                   <div>
                     <h4 className="font-semibold text-gray-700 mb-2">Notlar</h4>
                     <p className="text-sm text-gray-600 bg-white p-3 rounded-lg">
-                      {lesson.notes || "Not eklenmemiş"}
+                      {session.notes || "Not eklenmemiş"}
                     </p>
                   </div>
                 </div>
 
-                {lesson.status === "planned" && (
+                {session.status === "planned" && (
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => markLessonComplete(lesson.id)}
+                      onClick={() => markLessonComplete(session.id)}
                       className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                     >
                       ✅ Tamamlandı
                     </button>
                     <button
-                      onClick={() => cancelLesson(lesson.id)}
+                      onClick={() => cancelLesson(session.id)}
                       className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                     >
                       ❌ İptal Et
@@ -349,7 +410,7 @@ export default function TeacherSessions() {
             );
           })}
 
-          {teacherLessons.length === 0 && (
+          {sessions.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg mb-4">
                 Henüz ders bulunmuyor

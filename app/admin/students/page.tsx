@@ -1,14 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import {
-  mockStudents,
-  mockCourseStudents,
-  mockCourses,
-  mockLessons,
-  mockStudentPayments,
-} from "@/lib/mockData";
+import studentService from "@/lib/services/studentService";
+import { StudentResponse } from "@/lib/services/studentService";
 
 const adminMenuItems = [
   { icon: "📊", label: "Dashboard", href: "/admin/dashboard" },
@@ -21,60 +16,107 @@ const adminMenuItems = [
 export default function AdminStudents() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<"all" | "new" | "existing">("all");
   const [newStudent, setNewStudent] = useState({
     name: "",
     phone: "",
     email: "",
-    isNew: true,
+  });
+  const [students, setStudents] = useState<StudentResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const fetchedStudents = await studentService.getAllStudents();
+        setStudents(fetchedStudents);
+      } catch (err: any) {
+        setError(err.message || "Veriler yüklenirken bir hata oluştu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await studentService.createStudent(newStudent);
+      setShowAddForm(false);
+      setNewStudent({ name: "", phone: "", email: "" });
+      
+      // Listeyi yenile
+      const updatedStudents = await studentService.getAllStudents();
+      setStudents(updatedStudents);
+      
+      alert("Öğrenci başarıyla eklendi!");
+    } catch (error: any) {
+      alert(`Öğrenci eklenirken hata: ${error.message}`);
+    }
+  };
+
+  const handleDeleteStudent = async (studentId: string) => {
+    if (confirm("Bu öğrenciyi silmek istediğinizden emin misiniz?")) {
+      try {
+        await studentService.deleteStudent(studentId);
+        
+        // Listeyi yenile
+        const updatedStudents = await studentService.getAllStudents();
+        setStudents(updatedStudents);
+        
+        alert("Öğrenci başarıyla silindi!");
+      } catch (error: any) {
+        alert(`Öğrenci silinirken hata: ${error.message}`);
+      }
+    }
+  };
+
+  const filteredStudents = students.filter((student) => {
+    if (filterStatus === "all") return true;
+    if (filterStatus === "new") return student.isNew;
+    if (filterStatus === "existing") return !student.isNew;
+    return true;
   });
 
-  const handleAddStudent = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Yeni öğrenci:", newStudent);
-    setShowAddForm(false);
-    setNewStudent({ name: "", phone: "", email: "", isNew: true });
-    alert("Öğrenci başarıyla eklendi!");
-  };
-
-  const getStudentCourses = (studentId: string) => {
-    const enrollments = mockCourseStudents.filter(
-      (cs) => cs.studentId === studentId
+  if (loading) {
+    return (
+      <DashboardLayout
+        title="👨‍💼 Admin Paneli"
+        menuItems={adminMenuItems}
+        requiredRole="admin"
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-lg text-gray-600">
+              Veriler yükleniyor...
+            </span>
+          </div>
+        </div>
+      </DashboardLayout>
     );
-    return enrollments.map((enrollment) => {
-      const course = mockCourses.find((c) => c.id === enrollment.courseId);
-      return {
-        course,
-        hasPaid: enrollment.hasPaid,
-      };
-    });
-  };
+  }
 
-  const getStudentPayments = (studentId: string) => {
-    return mockStudentPayments.filter(
-      (payment) => payment.studentId === studentId
+  if (error) {
+    return (
+      <DashboardLayout
+        title="👨‍💼 Admin Paneli"
+        menuItems={adminMenuItems}
+        requiredRole="admin"
+      >
+        <div className="p-6">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <strong className="font-bold">Hata:</strong>
+            <span className="block sm:inline"> {error}</span>
+          </div>
+        </div>
+      </DashboardLayout>
     );
-  };
-
-  const getStudentLessons = (studentId: string) => {
-    const studentCourses = getStudentCourses(studentId);
-    const courseIds = studentCourses.map((sc) => sc.course?.id).filter(Boolean);
-
-    return mockLessons.filter(
-      (lesson) =>
-        courseIds.includes(lesson.courseId) &&
-        lesson.attendance.includes(studentId)
-    );
-  };
-
-  const togglePayment = (studentId: string, courseId: string) => {
-    // Mock: Ödeme durumunu değiştirme
-    alert("Ödeme durumu güncellendi!");
-  };
-
-  const getTeacherName = (teacherId: string) => {
-    const teacher = mockStudents.find((s) => s.id === teacherId);
-    return teacher?.name || "Bilinmeyen";
-  };
+  }
 
   return (
     <DashboardLayout
@@ -94,10 +136,46 @@ export default function AdminStudents() {
           </div>
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-lg"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-lg"
           >
             ➕ Yeni Öğrenci Ekle
           </button>
+        </div>
+
+        {/* Filtreleme */}
+        <div className="mb-6">
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setFilterStatus("all")}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                filterStatus === "all"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              Tümü ({students.length})
+            </button>
+            <button
+              onClick={() => setFilterStatus("new")}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                filterStatus === "new"
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              Yeni Öğrenciler ({students.filter(s => s.isNew).length})
+            </button>
+            <button
+              onClick={() => setFilterStatus("existing")}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                filterStatus === "existing"
+                  ? "bg-purple-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              Mevcut Öğrenciler ({students.filter(s => !s.isNew).length})
+            </button>
+          </div>
         </div>
 
         {/* Öğrenci Ekleme Formu */}
@@ -118,7 +196,7 @@ export default function AdminStudents() {
                     onChange={(e) =>
                       setNewStudent({ ...newStudent, name: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Örn: Ali Veli"
                     required
                   />
@@ -134,8 +212,8 @@ export default function AdminStudents() {
                     onChange={(e) =>
                       setNewStudent({ ...newStudent, phone: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    placeholder="Örn: +90 555 123 4567"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Örn: 5551234567"
                     required
                   />
                 </div>
@@ -150,33 +228,16 @@ export default function AdminStudents() {
                     onChange={(e) =>
                       setNewStudent({ ...newStudent, email: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    placeholder="Örn: ali@email.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Örn: ali@veli.com"
                     required
                   />
-                </div>
-
-                <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={newStudent.isNew}
-                      onChange={(e) =>
-                        setNewStudent({
-                          ...newStudent,
-                          isNew: e.target.checked,
-                        })
-                      }
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Yeni öğrenci</span>
-                  </label>
                 </div>
 
                 <div className="flex space-x-3 pt-4">
                   <button
                     type="submit"
-                    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
                   >
                     Öğrenci Ekle
                   </button>
@@ -210,21 +271,9 @@ export default function AdminStudents() {
               </div>
 
               {(() => {
-                const student = mockStudents.find(
-                  (s) => s.id === selectedStudent
-                );
-                const studentCourses = getStudentCourses(selectedStudent);
-                const studentPayments = getStudentPayments(selectedStudent);
-                const studentLessons = getStudentLessons(selectedStudent);
+                const student = students.find((s) => s.id.toString() === selectedStudent);
 
                 if (!student) return null;
-
-                const activeCourses = studentCourses.filter(
-                  (sc) => sc.course?.status === "active"
-                );
-                const pastCourses = studentCourses.filter(
-                  (sc) => sc.course?.status === "completed"
-                );
 
                 return (
                   <div className="space-y-6">
@@ -235,193 +284,59 @@ export default function AdminStudents() {
                       <p className="text-gray-600">{student.email}</p>
                       <p className="text-gray-600">{student.phone}</p>
                       <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-2 ${
+                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                           student.isNew
                             ? "bg-green-100 text-green-800"
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {student.isNew ? "🟢 Yeni Öğrenci" : "🔁 Devam Eden"}
+                        {student.isNew ? "🆕 Yeni Öğrenci" : "👨‍🎓 Mevcut Öğrenci"}
                       </span>
                     </div>
 
                     <div>
                       <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                        Aktif Kurslar
+                        Kurslar
                       </h4>
-                      {activeCourses.length > 0 ? (
-                        <div className="space-y-3">
-                          {activeCourses.map((sc, index) => (
-                            <div
-                              key={index}
-                              className="p-4 bg-white border border-gray-200 rounded-lg"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <div>
-                                  <h5 className="font-medium text-gray-800">
-                                    {sc.course?.title}
-                                  </h5>
-                                  <p className="text-sm text-gray-600">
-                                    {sc.course?.courseNo}
-                                  </p>
-                                </div>
-                                <span
-                                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                    sc.hasPaid
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                                >
-                                  {sc.hasPaid ? "💰 Ödedi" : "❌ Ödemedi"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm text-gray-600">
-                                <span>
-                                  Toplam Ders: {sc.course?.totalLessons}
-                                </span>
-                                <span>
-                                  Katıldığı Ders:{" "}
-                                  {
-                                    studentLessons.filter(
-                                      (l) => l.courseId === sc.course?.id
-                                    ).length
-                                  }
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-gray-500">Aktif kurs bulunmuyor</p>
-                      )}
+                      <p className="text-gray-500">Kurs bilgileri yükleniyor...</p>
                     </div>
 
                     <div>
                       <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                        Geçmiş Kurslar
+                        Özet
                       </h4>
-                      {pastCourses.length > 0 ? (
-                        <div className="space-y-3">
-                          {pastCourses.map((sc, index) => (
-                            <div
-                              key={index}
-                              className="p-4 bg-white border border-gray-200 rounded-lg"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <div>
-                                  <h5 className="font-medium text-gray-800">
-                                    {sc.course?.title}
-                                  </h5>
-                                  <p className="text-sm text-gray-600">
-                                    {sc.course?.courseNo}
-                                  </p>
-                                </div>
-                                <span
-                                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                    sc.hasPaid
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                                >
-                                  {sc.hasPaid ? "💰 Ödedi" : "❌ Ödemedi"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm text-gray-600">
-                                <span>
-                                  Toplam Ders: {sc.course?.totalLessons}
-                                </span>
-                                <span>
-                                  Katıldığı Ders:{" "}
-                                  {
-                                    studentLessons.filter(
-                                      (l) => l.courseId === sc.course?.id
-                                    ).length
-                                  }
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center p-3 bg-blue-50 rounded-lg">
+                          <p className="text-2xl font-bold text-blue-600">
+                            {/* TODO: Course count */}
+                            0
+                          </p>
+                          <p className="text-sm text-gray-600">Kurs</p>
                         </div>
-                      ) : (
-                        <p className="text-gray-500">Geçmiş kurs bulunmuyor</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                        Ödemeler
-                      </h4>
-                      {studentPayments.length > 0 ? (
-                        <div className="space-y-2">
-                          {studentPayments.map((payment, index) => {
-                            const course = mockCourses.find(
-                              (c) => c.id === payment.courseId
-                            );
-                            return (
-                              <div
-                                key={index}
-                                className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
-                              >
-                                <div>
-                                  <p className="font-medium text-gray-800">
-                                    {course?.title}
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {payment.date.toLocaleDateString("tr-TR")} -{" "}
-                                    {payment.amount}₺
-                                  </p>
-                                </div>
-                                <span
-                                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                    payment.isPaid
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                                >
-                                  {payment.isPaid ? "✅ Ödendi" : "❌ Ödenmedi"}
-                                </span>
-                              </div>
-                            );
-                          })}
+                        <div className="text-center p-3 bg-green-50 rounded-lg">
+                          <p className="text-2xl font-bold text-green-600">
+                            {/* TODO: Active courses count */}
+                            0
+                          </p>
+                          <p className="text-sm text-gray-600">Aktif Kurs</p>
                         </div>
-                      ) : (
-                        <p className="text-gray-500">Ödeme kaydı bulunmuyor</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                        Katıldığı Dersler
-                      </h4>
-                      {studentLessons.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {studentLessons.map((lesson, index) => {
-                            const course = mockCourses.find(
-                              (c) => c.id === lesson.courseId
-                            );
-                            return (
-                              <div
-                                key={index}
-                                className="p-3 bg-white border border-gray-200 rounded-lg"
-                              >
-                                <h5 className="font-medium text-gray-800 mb-1">
-                                  {course?.title} - Ders {lesson.lessonNumber}
-                                </h5>
-                                <p className="text-sm text-gray-600 mb-1">
-                                  {lesson.topic}
-                                </p>
-                                {lesson.date && (
-                                  <p className="text-sm text-gray-500">
-                                    📅 {lesson.date}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })}
+                        <div className="text-center p-3 bg-purple-50 rounded-lg">
+                          <p className="text-2xl font-bold text-purple-600">
+                            {/* TODO: Completed courses count */}
+                            0
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Tamamlanan Kurs
+                          </p>
                         </div>
-                      ) : (
-                        <p className="text-gray-500">Henüz derse katılmamış</p>
-                      )}
+                        <div className="text-center p-3 bg-orange-50 rounded-lg">
+                          <p className="text-2xl font-bold text-orange-600">
+                            {/* TODO: Total lessons count */}
+                            0
+                          </p>
+                          <p className="text-sm text-gray-600">Toplam Ders</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -432,82 +347,93 @@ export default function AdminStudents() {
 
         {/* Öğrenci Listesi */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {mockStudents.map((student) => {
-            const studentCourses = getStudentCourses(student.id);
-            const totalCourses = studentCourses.length;
-            const paidCourses = studentCourses.filter(
-              (sc) => sc.hasPaid
-            ).length;
-            const activeCourses = studentCourses.filter(
-              (sc) => sc.course?.status === "active"
-            ).length;
-            const pastCourses = studentCourses.filter(
-              (sc) => sc.course?.status === "completed"
-            ).length;
+          {filteredStudents.map((student) => (
+            <div
+              key={student.id}
+              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-200"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-1">
+                    {student.name}
+                  </h3>
+                  <p className="text-gray-600">{student.email}</p>
+                  <p className="text-gray-600">{student.phone}</p>
+                </div>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    student.isNew
+                      ? "bg-green-100 text-green-800"
+                      : "bg-blue-100 text-blue-800"
+                  }`}
+                >
+                  {student.isNew ? "🆕 Yeni" : "👨‍🎓 Mevcut"}
+                </span>
+              </div>
 
-            return (
-              <div
-                key={student.id}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-200"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-1">
-                      {student.name}
-                    </h3>
-                    <p className="text-gray-600">{student.email}</p>
-                    <p className="text-gray-600">{student.phone}</p>
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      student.isNew
-                        ? "bg-green-100 text-green-800"
-                        : "bg-blue-100 text-blue-800"
-                    }`}
-                  >
-                    {student.isNew ? "🟢 Yeni Öğrenci" : "🔁 Devam Eden"}
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">📚 Kurs:</span>
+                  <span className="font-semibold text-gray-800">
+                    {/* TODO: Course count */}
+                    0
                   </span>
                 </div>
 
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">📚 Toplam Kurs:</span>
-                    <span className="font-semibold">{totalCourses}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">🟢 Aktif Kurs:</span>
-                    <span className="font-semibold">{activeCourses}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">🔵 Geçmiş Kurs:</span>
-                    <span className="font-semibold">{pastCourses}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">💰 Ödenen:</span>
-                    <span className="font-semibold">
-                      {paidCourses}/{totalCourses}
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">📝 Ders:</span>
+                  <span className="font-semibold text-gray-800">
+                    {/* TODO: Lesson count */}
+                    0
+                  </span>
                 </div>
 
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setSelectedStudent(student.id)}
-                    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors"
-                  >
-                    Detaylar
-                  </button>
-                  <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-semibold transition-colors">
-                    Düzenle
-                  </button>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">💰 Ödeme:</span>
+                  <span className="font-semibold text-gray-800">
+                    {/* TODO: Payment status */}
+                    ❌ Ödemedi
+                  </span>
                 </div>
               </div>
-            );
-          })}
+
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setSelectedStudent(student.id.toString())}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  Detaylar
+                </button>
+                <button
+                  onClick={() => handleDeleteStudent(student.id.toString())}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  Sil
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
+
+        {filteredStudents.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg mb-4">
+              {filterStatus === "all"
+                ? "Henüz öğrenci bulunmuyor"
+                : filterStatus === "new"
+                ? "Yeni öğrenci bulunmuyor"
+                : "Mevcut öğrenci bulunmuyor"}
+            </p>
+            {filterStatus === "all" && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              >
+                İlk Öğrencinizi Ekleyin
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

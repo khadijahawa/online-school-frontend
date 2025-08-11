@@ -1,36 +1,189 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎓 Okul Yönetim Platformu
 
-## Getting Started
+Bu proje, çevrimiçi okul yönetimi için geliştirilmiş modern bir web uygulamasıdır. Next.js 14, TypeScript ve Tailwind CSS kullanılarak geliştirilmiştir.
 
-First, run the development server:
+## 🚀 Özellikler
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### 👨‍💼 Admin Paneli
+
+- **Dashboard**: Sistem genel durumu ve istatistikler
+- **Kurs Yönetimi**: Kurs ekleme, düzenleme ve görüntüleme
+- **Öğretmen Yönetimi**: Öğretmen ekleme ve yönetimi
+- **Öğrenci Yönetimi**: Öğrenci kayıtları ve takibi
+- **Ödeme Takibi**: Öğrenci ve öğretmen ödemeleri
+
+### 👩‍🏫 Öğretmen Paneli
+
+- **Dashboard**: Kişisel kurs ve ders istatistikleri
+- **Kurslarım**: Atanan kursları görüntüleme
+- **Ders Yönetimi**: Ders planlama ve yönetimi
+- **İlerleme Takibi**: Kurs ve öğrenci ilerlemesi
+
+## 🔧 Teknik Detaylar
+
+### Frontend
+
+- **Framework**: Next.js 14 (App Router)
+- **Dil**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Hooks (useState, useEffect)
+- **HTTP Client**: Axios (interceptor ile token yönetimi)
+
+### Backend Entegrasyonu
+
+- **Base URL**: `https://online-school-backend-gumy.onrender.com`
+- **Authentication**: JWT token tabanlı
+- **API Endpoints**: RESTful API
+
+### Veri Yapısı
+
+- **Courses**: Kurs bilgileri ve öğretmen atamaları
+- **Sessions**: Ders oturumları ve detayları
+- **Users**: Kullanıcı bilgileri ve rolleri
+- **Teachers**: Öğretmen profilleri ve kurs atamaları
+- **Students**: Öğrenci bilgileri ve kurs kayıtları
+
+## 📁 Proje Yapısı
+
+```
+school/
+├── app/                    # Next.js App Router sayfaları
+│   ├── admin/             # Admin paneli sayfaları
+│   ├── teacher/           # Öğretmen paneli sayfaları
+│   └── layout.tsx         # Ana layout
+├── components/             # React bileşenleri
+│   ├── AuthGuard.tsx      # Kimlik doğrulama koruması
+│   ├── DashboardLayout.tsx # Dashboard layout
+│   └── Sidebar.tsx        # Yan menü
+├── lib/                    # Yardımcı kütüphaneler
+│   ├── services/          # API servisleri
+│   │   ├── courseService.ts
+│   │   ├── sessionService.ts
+│   │   └── studentService.ts
+│   ├── auth.ts            # Kimlik doğrulama servisi
+│   ├── axiosClient.ts     # HTTP istemcisi
+│   ├── types.ts           # TypeScript tip tanımları
+│   └── jwt.ts             # JWT yardımcıları
+└── public/                 # Statik dosyalar
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Kurulum ve Çalıştırma
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Gereksinimler
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Node.js 18+
+- npm veya yarn
 
-## Learn More
+### Kurulum
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Bağımlılıkları yükle
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Geliştirme sunucusunu başlat
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Ortam Değişkenleri
 
-## Deploy on Vercel
+`.env.local` dosyası oluşturun:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```env
+NEXT_PUBLIC_API_BASE_URL=https://online-school-backend-gumy.onrender.com
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔐 Kimlik Doğrulama
+
+### Admin Girişi
+
+- **URL**: `/admin/login`
+- **Demo**: `admin@example.com` / `123456`
+
+### Öğretmen Girişi
+
+- **URL**: `/teacher/login`
+- **Demo**: `teacher@example.com` / `123456`
+
+## 📊 API Entegrasyonu Durumu
+
+### ✅ Tamamlanan
+
+- [x] Kurs listeleme (`GET /courses`)
+- [x] Kurs detayları (`GET /courses/:id`)
+- [x] Session yönetimi (tamamlandı/iptal)
+- [x] Kimlik doğrulama ve yetkilendirme
+- [x] Axios interceptor ile token yönetimi
+- [x] Öğrenci listeleme (`GET /students`)
+- [x] Öğrenci detayları (`GET /students/:id`)
+- [x] Öğrenci kursları (`GET /students/:id/courses`)
+- [x] Öğrenci CRUD işlemleri (ekleme, silme, güncelleme)
+
+### 🔄 Devam Eden
+
+- [ ] Ödeme sistemi API'leri
+- [ ] Kurs ekleme/düzenleme API'leri
+- [ ] Session ekleme API'leri
+- [ ] Teacher management API'leri
+
+### 📝 TODO
+
+- [ ] Student enrollment endpoint'leri
+- [ ] Payment tracking API'leri
+- [ ] Course creation/editing API'leri
+- [ ] Session creation API'leri
+- [ ] Teacher listing/management API'leri
+
+## 🎯 Kullanım Senaryoları
+
+### Admin İş Akışı
+
+1. `/admin/login` ile giriş yap
+2. Dashboard'da sistem genel durumunu gör
+3. Kurslar sekmesinde mevcut kursları yönet
+4. Öğrenciler sekmesinde öğrenci kayıtlarını yönet
+5. Öğretmen ve öğrenci kayıtlarını takip et
+
+### Öğretmen İş Akışı
+
+1. `/teacher/login` ile giriş yap
+2. Dashboard'da kişisel istatistikleri gör
+3. Kurslarım sekmesinde atanan kursları incele
+4. Dersler sekmesinde ders planlaması yap
+
+## 🛠️ Geliştirme
+
+### Yeni API Endpoint Ekleme
+
+1. `lib/services/` altında yeni servis oluştur
+2. `lib/types.ts`'e tip tanımları ekle
+3. İlgili sayfada servisi kullan
+
+### Yeni Sayfa Ekleme
+
+1. `app/` altında yeni klasör oluştur
+2. `page.tsx` dosyası ekle
+3. `DashboardLayout` ile sarmala
+
+## 📝 Notlar
+
+- Proje şu anda **API entegrasyonu aşamasında** bulunmaktadır
+- Mock veriler kaldırılmış, gerçek API'ler kullanılmaktadır
+- Bazı özellikler henüz API'ye bağlanmamıştır (TODO olarak işaretlenmiştir)
+- Authentication sistemi tamamen çalışır durumdadır
+- Student management sistemi tamamen API'ye bağlanmıştır
+
+## 🤝 Katkıda Bulunma
+
+1. Fork yapın
+2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Commit yapın (`git commit -m 'Add amazing feature'`)
+4. Push yapın (`git push origin feature/amazing-feature`)
+5. Pull Request oluşturun
+
+## 📄 Lisans
+
+Bu proje MIT lisansı altında lisanslanmıştır.
+
+## 📞 İletişim
+
+Proje hakkında sorularınız için issue açabilir veya pull request gönderebilirsiniz.
