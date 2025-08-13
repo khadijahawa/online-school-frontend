@@ -134,6 +134,44 @@ class CourseService {
     }
   }
 
+  async updateCourse(
+    courseId: string,
+    payload: Partial<{
+      title: string;
+      course_no: string;
+      teacher_id: number;
+      total_sessions: number;
+      status: "active" | "completed" | "cancelled";
+    }>
+  ): Promise<{ message?: string }> {
+    try {
+      const response = await axiosClient.patch(
+        `/admin/courses/${courseId}`,
+        payload
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error("Kurs güncellenirken hata:", error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw new Error("Kurs güncellenirken bir hata oluştu");
+    }
+  }
+
+  async deleteCourse(courseId: string): Promise<{ message?: string }> {
+    try {
+      const response = await axiosClient.delete(`/admin/courses/${courseId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error("Kurs silinirken hata:", error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw new Error("Kurs silinirken bir hata oluştu");
+    }
+  }
+
   // Öğretmene ait kursları getir
   async getCoursesByTeacher(teacherId: string): Promise<MappedCourse[]> {
     try {
@@ -192,6 +230,24 @@ class CourseService {
     } catch (error) {
       console.error("Kurs istatistikleri hesaplanırken hata:", error);
       throw new Error("Kurs istatistikleri hesaplanırken bir hata oluştu");
+    }
+  }
+
+  async enrollStudent(
+    courseId: string,
+    studentId: number
+  ): Promise<{ message: string }> {
+    try {
+      const response = await axiosClient.post(`/courses/${courseId}/enroll`, {
+        studentId,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Öğrenci kursa kaydedilirken hata:", error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw new Error("Öğrenci kursa kaydedilirken bir hata oluştu");
     }
   }
 }

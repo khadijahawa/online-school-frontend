@@ -113,6 +113,7 @@ export interface CreateCourseRequest {
   course_no: string;
   teacher_id: number;
   total_sessions: number;
+  status?: "active" | "completed" | "cancelled";
 }
 
 export interface CreateCourseResponse {

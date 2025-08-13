@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import studentService from "@/lib/services/studentService";
+import courseService from "@/lib/services/courseService";
 import { StudentResponse } from "@/lib/services/studentService";
-import { CreateStudentRequest } from "@/lib/types";
+import { CreateStudentRequest, MappedCourse } from "@/lib/types";
 
 const adminMenuItems = [
   { icon: "📊", label: "Dashboard", href: "/admin/dashboard" },
@@ -27,6 +28,9 @@ export default function AdminStudents() {
     is_new: false,
   });
   const [students, setStudents] = useState<StudentResponse[]>([]);
+  const [allCourses, setAllCourses] = useState<MappedCourse[]>([]);
+  const [studentCourses, setStudentCourses] = useState<MappedCourse[]>([]);
+  const [enrollCourseId, setEnrollCourseId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -34,8 +38,12 @@ export default function AdminStudents() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const fetchedStudents = await studentService.getAllStudents();
+        const [fetchedStudents, fetchedCourses] = await Promise.all([
+          studentService.getAllStudents(),
+          courseService.getAllCourses(),
+        ]);
         setStudents(fetchedStudents);
+        setAllCourses(fetchedCourses);
       } catch (err: any) {
         setError(err.message || "Veriler yüklenirken bir hata oluştu");
       } finally {
@@ -45,6 +53,41 @@ export default function AdminStudents() {
 
     fetchData();
   }, []);
+
+  // Seçilen öğrenci değiştiğinde, öğrencinin kurslarını getir
+  useEffect(() => {
+    const loadStudentCourses = async () => {
+      if (!selectedStudent) {
+        setStudentCourses([]);
+        setEnrollCourseId("");
+        return;
+      }
+      try {
+        const courses = await studentService.getStudentCourses(selectedStudent);
+        setStudentCourses(courses);
+      } catch (e) {
+        setStudentCourses([]);
+      }
+    };
+    loadStudentCourses();
+  }, [selectedStudent]);
+
+  const handleEnroll = async () => {
+    if (!selectedStudent || !enrollCourseId) return;
+    try {
+      const resp = await courseService.enrollStudent(
+        enrollCourseId,
+        parseInt(selectedStudent, 10)
+      );
+      alert(resp.message || "Öğrenci kursa eklendi");
+      // Listeyi tazele
+      const courses = await studentService.getStudentCourses(selectedStudent);
+      setStudentCourses(courses);
+      setEnrollCourseId("");
+    } catch (e: any) {
+      alert(e.message || "Kursa ekleme sırasında hata oluştu");
+    }
+  };
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,7 +321,7 @@ export default function AdminStudents() {
         {/* Öğrenci Detayları Modal */}
         {selectedStudent && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl p-6 w_full max-w-4xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800">
                   Öğrenci Detayları
@@ -321,11 +364,76 @@ export default function AdminStudents() {
 
                     <div>
                       <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                        Kurslar
+                        Kursları
                       </h4>
-                      <p className="text-gray-500">
-                        Kurs bilgileri yükleniyor...
-                      </p>
+                      {studentCourses.length > 0 ? (
+                        <div className="space-y-2">
+                          {studentCourses.map((course) => (
+                            <div
+                              key={course.id}
+                              className="p-3 bg-white border border-gray-200 rounded-lg"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-gray-800">
+                                    {course.title}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {course.courseNo}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      course.status === "active"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-blue-100 text-blue-800"
+                                    }`}
+                                  >
+                                    {course.status === "active"
+                                      ? "Aktif"
+                                      : "Geçmiş"}
+                                  </span>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Ödeme: Bilinmiyor
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">
+                          Bu öğrenci için kurs bulunamadı
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                        Kursa Ekle
+                      </h4>
+                      <div className="flex items-center space-x-3">
+                        <select
+                          value={enrollCourseId}
+                          onChange={(e) => setEnrollCourseId(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Kurs seçin</option>
+                          {allCourses.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.title} ({c.courseNo})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={handleEnroll}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
+                          disabled={!enrollCourseId}
+                        >
+                          Ekle
+                        </button>
+                      </div>
                     </div>
 
                     <div>
@@ -335,19 +443,27 @@ export default function AdminStudents() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="text-center p-3 bg-blue-50 rounded-lg">
                           <p className="text-2xl font-bold text-blue-600">
-                            {/* TODO: Course count */}0
+                            {studentCourses.length}
                           </p>
                           <p className="text-sm text-gray-600">Kurs</p>
                         </div>
                         <div className="text-center p-3 bg-green-50 rounded-lg">
                           <p className="text-2xl font-bold text-green-600">
-                            {/* TODO: Active courses count */}0
+                            {
+                              studentCourses.filter(
+                                (c) => c.status === "active"
+                              ).length
+                            }
                           </p>
                           <p className="text-sm text-gray-600">Aktif Kurs</p>
                         </div>
                         <div className="text-center p-3 bg-purple-50 rounded-lg">
                           <p className="text-2xl font-bold text-purple-600">
-                            {/* TODO: Completed courses count */}0
+                            {
+                              studentCourses.filter(
+                                (c) => c.status === "completed"
+                              ).length
+                            }
                           </p>
                           <p className="text-sm text-gray-600">
                             Tamamlanan Kurs
@@ -355,7 +471,7 @@ export default function AdminStudents() {
                         </div>
                         <div className="text-center p-3 bg-orange-50 rounded-lg">
                           <p className="text-2xl font-bold text-orange-600">
-                            {/* TODO: Total lessons count */}0
+                            0
                           </p>
                           <p className="text-sm text-gray-600">Toplam Ders</p>
                         </div>

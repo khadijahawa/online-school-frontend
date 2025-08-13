@@ -19,6 +19,7 @@ const adminMenuItems = [
 export default function AdminCourses() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<
     "all" | "active" | "completed"
   >("all");
@@ -27,12 +28,32 @@ export default function AdminCourses() {
     course_no: "",
     teacher_id: 0,
     total_sessions: 1,
+    status: "active",
   });
+  const [editCourse, setEditCourse] = useState<{
+    title: string;
+    course_no: string;
+    teacher_id: number;
+    total_sessions: number;
+    status: "active" | "completed" | "cancelled";
+  }>({
+    title: "",
+    course_no: "",
+    teacher_id: 0,
+    total_sessions: 1,
+    status: "active",
+  });
+
   const [courses, setCourses] = useState<MappedCourse[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const refreshCourses = async () => {
+    const updated = await courseService.getAllCourses();
+    setCourses(updated);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,16 +88,55 @@ export default function AdminCourses() {
         course_no: "",
         teacher_id: 0,
         total_sessions: 1,
+        status: "active",
       });
 
-      // Listeyi yenile
-      const updatedCourses = await courseService.getAllCourses();
-      setCourses(updatedCourses);
-
+      await refreshCourses();
       alert(response.message || "Kurs başarıyla eklendi!");
     } catch (error: any) {
       alert(`Kurs eklenirken hata: ${error.message}`);
     }
+  };
+
+  const openEditModal = (course: MappedCourse) => {
+    setEditingCourseId(course.id);
+    setEditCourse({
+      title: course.title,
+      course_no: course.courseNo,
+      teacher_id: parseInt(course.teacherId, 10),
+      total_sessions: course.totalLessons,
+      status: course.status,
+    });
+  };
+
+  const handleUpdateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourseId) return;
+    try {
+      await courseService.updateCourse(editingCourseId, editCourse);
+      setEditingCourseId(null);
+      await refreshCourses();
+      alert("Kurs güncellendi");
+    } catch (error: any) {
+      alert(`Kurs güncellenirken hata: ${error.message}`);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!editingCourseId) return;
+    if (!confirm("Bu kursu silmek istediğinize emin misiniz?")) return;
+    try {
+      await courseService.deleteCourse(editingCourseId);
+      setEditingCourseId(null);
+      await refreshCourses();
+      alert("Kurs silindi");
+    } catch (error: any) {
+      alert(`Kurs silinirken hata: ${error.message}`);
+    }
+  };
+
+  const markAsCompleted = () => {
+    setEditCourse((prev) => ({ ...prev, status: "completed" }));
   };
 
   const getTeacherName = (teacherId: string) => {
@@ -103,7 +163,7 @@ export default function AdminCourses() {
     // Şimdilik tüm öğrencileri döndür (test için)
     return students.map((student) => ({
       student,
-      hasPaid: Math.random() > 0.5, // Random payment status for demo
+      hasPaid: Math.random() > 0.5,
     }));
   };
 
@@ -291,6 +351,26 @@ export default function AdminCourses() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Durum
+                  </label>
+                  <select
+                    value={newCourse.status || "active"}
+                    onChange={(e) =>
+                      setNewCourse({
+                        ...newCourse,
+                        status: e.target.value as any,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="active">Aktif</option>
+                    <option value="completed">Geçmiş (Tamamlandı)</option>
+                    <option value="cancelled">İptal</option>
+                  </select>
+                </div>
+
                 <div className="flex space-x-3 pt-4">
                   <button
                     type="submit"
@@ -301,6 +381,147 @@ export default function AdminCourses() {
                   <button
                     type="button"
                     onClick={() => setShowAddForm(false)}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg font-semibold transition-colors"
+                  >
+                    İptal
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Kurs Düzenleme Formu */}
+        {editingCourseId && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">
+                Kursu Düzenle
+              </h2>
+              <form onSubmit={handleUpdateCourse} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kurs Adı
+                  </label>
+                  <input
+                    type="text"
+                    value={editCourse.title}
+                    onChange={(e) =>
+                      setEditCourse({ ...editCourse, title: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kurs Numarası
+                  </label>
+                  <input
+                    type="text"
+                    value={editCourse.course_no}
+                    onChange={(e) =>
+                      setEditCourse({
+                        ...editCourse,
+                        course_no: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Öğretmen
+                  </label>
+                  <select
+                    value={editCourse.teacher_id || 0}
+                    onChange={(e) =>
+                      setEditCourse({
+                        ...editCourse,
+                        teacher_id: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value={0}>Öğretmen seçin</option>
+                    {teachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.User.name} ({teacher.User.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Toplam Ders
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={editCourse.total_sessions}
+                    onChange={(e) =>
+                      setEditCourse({
+                        ...editCourse,
+                        total_sessions: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Durum
+                  </label>
+                  <select
+                    value={editCourse.status}
+                    onChange={(e) =>
+                      setEditCourse({
+                        ...editCourse,
+                        status: e.target.value as any,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="active">Aktif</option>
+                    <option value="completed">Geçmiş (Tamamlandı)</option>
+                    <option value="cancelled">İptal</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={markAsCompleted}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Geçmiş kursa çevir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteCourse}
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    Sil
+                  </button>
+                </div>
+
+                <div className="flex space-x-3 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                  >
+                    Kaydet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingCourseId(null)}
                     className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg font-semibold transition-colors"
                   >
                     İptal
@@ -459,7 +680,7 @@ export default function AdminCourses() {
                 key={course.id}
                 className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-200"
               >
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify_between items-start mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-800 mb-1">
                       {course.title}
@@ -528,7 +749,10 @@ export default function AdminCourses() {
                   >
                     Detaylar
                   </button>
-                  <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-semibold transition-colors">
+                  <button
+                    onClick={() => openEditModal(course)}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-semibold transition-colors"
+                  >
                     Düzenle
                   </button>
                 </div>

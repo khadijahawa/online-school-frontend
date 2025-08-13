@@ -48,15 +48,12 @@ interface CourseForTeacherFallbackResponse {
 }
 
 class TeacherService {
-  // Tüm öğretmenleri getir (fallback: kurslardan türet)
+  // Tüm öğretmenleri getir (önce /teachers, 404'te kurslardan türet)
   async getAllTeachers(): Promise<TeacherResponse[]> {
     try {
-      const response = await axiosClient.get<TeacherResponse[]>(
-        "/admin/teachers"
-      );
+      const response = await axiosClient.get<TeacherResponse[]>("/teachers");
       return response.data;
     } catch (error: any) {
-      // 404 ise fallback: /courses'dan benzersiz teacher'ları topla
       if (error?.response?.status === 404) {
         try {
           const coursesRes = await axiosClient.get<
@@ -98,11 +95,11 @@ class TeacherService {
     }
   }
 
-  // Belirli bir öğretmeni getir (404'te fallback: kurslardan ara)
+  // Belirli bir öğretmeni getir (önce /teachers/:id, 404'te fallback: kurslardan ara)
   async getTeacherById(id: string): Promise<TeacherResponse> {
     try {
       const response = await axiosClient.get<TeacherResponse>(
-        `/admin/teachers/${id}`
+        `/teachers/${id}`
       );
       return response.data;
     } catch (error: any) {
@@ -116,7 +113,7 @@ class TeacherService {
     }
   }
 
-  // Yeni öğretmen ekle
+  // Yeni öğretmen ekle (admin yetkisi ile)
   async createTeacher(
     teacherData: CreateTeacherRequest
   ): Promise<CreateTeacherResponse> {
